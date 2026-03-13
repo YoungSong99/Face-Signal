@@ -4,7 +4,6 @@ from .config import (
     SKIN_DIR,
     IMAGE_PATH,
     INPUT_CSV,
-    DEFAULT_TARGET,
     RETINAFACE_CONFIDENCE_THRESHOLD,
 )
 from .pipeline import ControlledFaceDatasetBuilder

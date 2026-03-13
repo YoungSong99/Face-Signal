@@ -1,11 +1,13 @@
 import cv2
 import numpy as np
 import pandas as pd
+from skimage.util import crop
 from tqdm import tqdm
 from pathlib import Path
-import os
-import site
-import logging
+import onnxruntime as ort
+
+ort.preload_dlls(directory="")
+ort.print_debug_info()
 
 from uniface.analyzer import FaceAnalyzer
 from uniface.constants import ParsingWeights
@@ -23,7 +25,7 @@ class ControlledFaceDatasetBuilder:
         face_dir,
         skin_dir,
         retinaface_confidence_threshold=0.5,
-        save_ext=".jpg",
+        save_ext=".png",
     ):
         self.data_dir = Path(data_dir).resolve()
         self.face_dir = Path(face_dir).resolve()
@@ -65,12 +67,20 @@ class ControlledFaceDatasetBuilder:
         bw = x2 - x1
         bh = y2 - y1
         side = max(bw, bh)
-        pad = side // 2
+        half = side // 2
 
         cx = (x1 + x2) // 2
         cy = (y1 + y2) // 2
 
-        crop = img_bgr[cy-pad:cy+pad, cx-pad:cx+pad]
+        left = max(cx - half, 0)
+        right = min(cx + half, w)
+        top = max(cy - half, 0)
+        bottom = min(cy + half, h)
+
+        crop = img_bgr[top:bottom, left:right]
+
+        if crop.size == 0:
+            return None
 
         return crop
     
@@ -92,6 +102,9 @@ class ControlledFaceDatasetBuilder:
 
 
     def parse_skin(self, face_crop):
+        
+        if face_crop is None or face_crop.size == 0:
+            return None
 
         try:
             mask = self.parser.parse(face_crop)
@@ -138,7 +151,7 @@ class ControlledFaceDatasetBuilder:
             return
 
         face_crop = self.crop_face_square(img_bgr, face_bbox)
-        if face_crop is None:
+        if face_crop is None or face_crop.size == 0:
             return
 
         skin_mask = self.parse_skin(face_crop)
@@ -157,8 +170,7 @@ class ControlledFaceDatasetBuilder:
 
         for raw_path in tqdm(image_paths, desc="Processing images"):
             image_path = normalize_image_path(raw_path, self.data_dir)
-
-        try:
-            self.analyze_image(str(image_path))
-        except Exception as e:
-            print(f"pipeline_crash: {image_path} | {e}")
+            try:
+                self.analyze_image(str(image_path))
+            except Exception as e:
+                print(f"pipeline_crash: {image_path} | {e}")

@@ -29,7 +29,7 @@ def normalize_image_path(image_path, data_dir: Path) -> Path:
     return (data_dir / image_path).resolve()
 
 
-def map_output_path(image_path: str, src_root: str | Path, dst_root: str | Path, suffix: str = ".jpg") -> str:
+def map_output_path(image_path: str, src_root: str | Path, dst_root: str | Path, suffix: str = ".png") -> str:
     image_path = Path(image_path).resolve()
     src_root = Path(src_root).resolve()
     dst_root = Path(dst_root).resolve()
