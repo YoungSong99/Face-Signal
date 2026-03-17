@@ -6,16 +6,21 @@ class ColorFeatureExtractor:
     def _color_stats(self, image):
         features = {}
 
+        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+        ycrcb = cv2.cvtColor(image, cv2.COLOR_RGB2YCrCb)
+
         features.update(self._rgb_stats(image))
-        features.update(self._hsv_stats(image))
-        features.update(self._lab_stats(image))
-        features.update(self._ycrcb_stats(image))
+        features.update(self._hsv_stats(hsv))
+        features.update(self._lab_stats(lab))
+        features.update(self._ycrcb_stats(ycrcb))
         features.update(self._colorfulness(image))
         features.update(self._color_entropy(image))
-        features.update(self._chroma_noise(image))
-        features.update(self._lab_chroma_variance(image))
+        features.update(self._chroma_noise(lab))
+        features.update(self._lab_chroma_variance(lab))
 
         return features
+
 
     def _rgb_stats(self, image):
         r = image[:, :, 0]
@@ -31,10 +36,9 @@ class ColorFeatureExtractor:
             "rgb_std_b": safe_std(b)
         }
 
-    def _hsv_stats(self, image):
-        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    def _hsv_stats(self, hsv):
 
-        h = hsv[:, :, 0]
+        h = hsv[:, :, 0] / 360.0
         s = hsv[:, :, 1]
         v = hsv[:, :, 2]
 
@@ -48,12 +52,11 @@ class ColorFeatureExtractor:
             "hsv_std_v": safe_std(v),
         }
 
-    def _lab_stats(self, image):
-        lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    def _lab_stats(self, lab):
 
-        l = lab[:, :, 0]
-        a = lab[:, :, 1]
-        b = lab[:, :, 2]
+        l = lab[:, :, 0] / 100.0
+        a = (lab[:, :, 1] + 128.0) / 255.0
+        b = (lab[:, :, 2] + 128.0) / 255.0
 
         return {
             "lab_mean_l": safe_mean(l),
@@ -65,12 +68,11 @@ class ColorFeatureExtractor:
             "lab_std_b": safe_std(b),
         }
 
-    def _ycrcb_stats(self, image):
-        ycrcb = cv2.cvtColor(image, cv2.COLOR_RGB2YCrCb)
+    def _ycrcb_stats(self, ycrcb):
 
         y = ycrcb[:, :, 0]
-        cr = ycrcb[:, :, 1]
-        cb = ycrcb[:, :, 2]
+        cr = ycrcb[:, :, 1] + 0.5
+        cb = ycrcb[:, :, 2] + 0.5
 
         return {
             "ycrcb_mean_y": safe_mean(y),
@@ -84,9 +86,9 @@ class ColorFeatureExtractor:
 
     # reference: https://pyimagesearch.com/2017/06/05/computing-image-colorfulness-with-opencv-and-python/
     def _colorfulness(self, image):
-        r = image[:, :, 0].astype(np.float32)
-        g = image[:, :, 1].astype(np.float32)
-        b = image[:, :, 2].astype(np.float32)
+        r = image[:, :, 0]
+        g = image[:, :, 1]
+        b = image[:, :, 2]
 
         rg = r - g
         yb = 0.5 * (r + g) - b
@@ -104,8 +106,7 @@ class ColorFeatureExtractor:
             "colorfulness": float(std_root + 0.3 * mean_root)
         }
 
-    def _color_entropy(self, image):
-        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    def _color_entropy(self, hsv):
         saturation = hsv[:, :, 1]
 
         hist = cv2.calcHist([saturation], [0], None, [256], [0, 256])
@@ -117,11 +118,10 @@ class ColorFeatureExtractor:
             "color_entropy": float(entropy)
         }
 
-    def _chroma_noise(self, image):
-        lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    def _chroma_noise(self, lab):
 
-        a = lab[:, :, 1].astype(np.float32)
-        b = lab[:, :, 2].astype(np.float32)
+        a = (lab[:, :, 1] + 128.0) / 255.0
+        b = (lab[:, :, 2] + 128.0) / 255.0
 
         a_blur = cv2.GaussianBlur(a, (5, 5), 0)
         b_blur = cv2.GaussianBlur(b, (5, 5), 0)
@@ -137,11 +137,10 @@ class ColorFeatureExtractor:
             "chroma_noise": chroma_noise
         }
 
-    def _lab_chroma_variance(self, image):
-        lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    def _lab_chroma_variance(self, lab):
 
-        a = lab[:, :, 1]
-        b = lab[:, :, 2]
+        a = (lab[:, :, 1] + 128.0) / 255.0
+        b = (lab[:, :, 2] + 128.0) / 255.0
 
         chroma = np.sqrt(a.astype(np.float32) ** 2 + b.astype(np.float32) ** 2)
 

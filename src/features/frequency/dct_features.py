@@ -4,9 +4,9 @@ from src.utils.stats_utils import safe_mean, safe_std, safe_var
 
 
 class DCTFeatureExtractor:
-    def _dct_stats(self, gray_img: np.ndarray) -> dict[str, float]:
-        gray_f = gray_img.astype(np.float32) / 255.0
-        dct = cv2.dct(gray_f)
+    def _dct_stats(self, gray: np.ndarray) -> dict[str, float]:
+
+        dct = cv2.dct(gray)
         dct_abs = np.abs(dct)
 
         h, w = dct_abs.shape

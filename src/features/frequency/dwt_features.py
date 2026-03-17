@@ -6,8 +6,7 @@ from src.utils.stats_utils import safe_mean, safe_std, safe_var, safe_entropy
 
 class DWTFeatureExtractor:
     def _dwt_stats(self, gray_img: np.ndarray) -> dict[str, float]:
-        gray_f = gray_img.astype(np.float32) / 255.0
-        gray_f = self._pad_to_even(gray_f)
+        gray_f = self._pad_to_even(gray_img)
 
         ll, (lh, hl, hh) = pywt.dwt2(gray_f, "haar")
 

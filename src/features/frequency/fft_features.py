@@ -1,16 +1,25 @@
 import cv2
-from matplotlib.pylab import power
 import numpy as np
-from wcwidth import center
-
 from src.utils.stats_utils import safe_mean, safe_std, safe_entropy
+
+
+def fft(gray_f):
+    dft = np.fft.fft2(gray_f)
+    dft_shift = np.fft.fftshift(dft)
+
+    magnitude = np.abs(dft_shift)
+    power = magnitude ** 2
+    log_magnitude = np.log(magnitude + 1e-8)
+
+    return magnitude, power, log_magnitude
+
 
 class FFTFeatureExtractor:
     def fft_features(self, gray_img):
         
         features = {}
         
-        magnitude, power, log_magnitude = self.fft(gray_img)
+        magnitude, power, log_magnitude = fft(gray_img)
         polar, radial_profile, angular_profile = self._polar_spectrum(log_magnitude)
         log_freq, log_power, slope, intercept = self._frequency_slope(radial_profile)
 
@@ -19,18 +28,6 @@ class FFTFeatureExtractor:
         features.update(self._spectrum_stats(log_magnitude, slope))
 
         return features
-        
-    
-    def fft(self, gray_img):
-        gray_f = gray_img.astype(np.float32)
-        dft = np.fft.fft2(gray_f)
-        dft_shift = np.fft.fftshift(dft)
-
-        magnitude = np.abs(dft_shift)
-        power = magnitude ** 2
-        log_magnitude = np.log(magnitude + 1e-8)
-
-        return magnitude, power, log_magnitude
     
     
     def _polar_spectrum(self, log_magnitude):
@@ -51,7 +48,7 @@ class FFTFeatureExtractor:
         freq = np.arange(1, len(radial_profile) + 1)
         log_freq = np.log(freq)
         power = radial_profile + 1e-8
-        log_power = np.log(power)
+        log_power = np.log(power + 1e-8)
         slope, intercept = np.polyfit(log_freq, log_power, 1)
         
         return log_freq, log_power, float(slope), float(intercept)

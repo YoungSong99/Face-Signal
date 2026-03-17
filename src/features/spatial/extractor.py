@@ -21,24 +21,19 @@ class SpatialFeatureExtractor(
         self.use_texture = use_texture
         self.use_edge = use_edge
 
-    def extract(self, image: np.ndarray) -> dict[str, float]:
-
-        if image.ndim != 3 or image.shape[2] != 3:
-            raise ValueError("Input image must be an RGB image with shape (H, W, 3).")
+    def extract(self, image_rgb, gray):
 
         features = {}
 
         if self.use_color:
-            features.update(self._color_stats(image))
-
-        gray_img = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            features.update(self._color_stats(image_rgb))
 
         if self.use_texture:
-            features.update(self._lbp_stats(gray_img))
-            features.update(self._glcm_stats(gray_img))
-            features.update(self._gabor_stats(gray_img))
+            features.update(self._lbp_stats(gray))
+            features.update(self._glcm_stats(gray))
+            features.update(self._gabor_stats(gray))
 
         if self.use_edge:
-            features.update(self._edge_stats(gray_img))
+            features.update(self._edge_stats(gray))
 
         return features
