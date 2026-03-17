@@ -1,4 +1,7 @@
-# from https://www.astrobetter.com/wiki/tiki-index.php?page=python_radial_profiles
+# Based on:
+# https://www.astrobetter.com/wiki/tiki-index.php?page=python_radial_profiles
+#
+# Modifications: Replaced integer-radius binning with normalized radial bins (r_norm)
 import numpy as np
 
 def azimuthalAverage(image, center=None, num_bins=32):
