@@ -68,7 +68,7 @@ class ResidualFeatureExtractor:
             return rgb_float_to_gray(rgb_residual / 255.0)
 
         if self.gray_source == "ycrcb":
-            return rgb_float_to_gray(ycrcb_residual / 255.0)
+            return ycrcb_residual[:, :, 0].astype(np.float32)
 
         gray_rgb = rgb_float_to_gray(rgb_residual / 255.0)
         gray_ycc = rgb_float_to_gray(ycrcb_residual / 255.0)

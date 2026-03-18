@@ -72,7 +72,7 @@ class ResidualZoneFeatures:
         for key, value in dct_features.items():
             features[f"global_{key}"] = value
 
-        dwt_features = self.dwt_extractor.dwt_features(gray)
+        dwt_features = self.dwt_extractor._dwt_stats(gray)
         
         for key, value in dwt_features.items():
             features[f"global_{key}"] = value
