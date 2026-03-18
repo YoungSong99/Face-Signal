@@ -5,7 +5,8 @@ from src.utils.stats_utils import safe_stats, hist_entropy
 
 class SRMFeatureExtractor:
 
-    def _srm_stats(self, gray_255):
+    def _srm_stats(self, gray):
+        gray_255 = np.clip((gray * 255).round(), 0, 255).astype(np.uint8)
 
         features = {}
         residuals = []
