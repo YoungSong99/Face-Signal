@@ -24,7 +24,8 @@ def rgb_float_to_gray(img):
     if img.ndim == 2:
         return img
 
-    return 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
+    gray = 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
+    return np.clip(gray, 0.0, 1.0).astype(np.float32)
 
 
 def load_rgb_and_gray(path):
@@ -37,3 +38,14 @@ def load_rgb_and_gray(path):
     gray = rgb_float_to_gray(rgb)
 
     return rgb, gray
+
+
+def rgb_to_uint8(image):
+    img = np.asarray(image)
+    if img.dtype == np.uint8:
+        return img
+    img = img.astype(np.float32)
+    if img.max() <= 1.0:
+        img = img * 255.0
+    img = np.clip(img, 0, 255).round().astype(np.uint8)
+    return img
