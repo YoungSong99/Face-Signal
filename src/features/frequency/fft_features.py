@@ -20,7 +20,7 @@ class FFTFeatureExtractor:
         features = {}
         
         magnitude, power, log_magnitude = fft(gray_img)
-        polar, radial_profile, angular_profile = self._polar_spectrum(log_magnitude)
+        polar, radial_profile, angular_profile = self._polar_spectrum(power)
         log_freq, log_power, slope, intercept = self._frequency_slope(radial_profile)
 
         features.update(self._radial_distribution(radial_profile, n_bands=10))
@@ -30,17 +30,18 @@ class FFTFeatureExtractor:
         return features
     
     
-    def _polar_spectrum(self, log_magnitude):
+    def _polar_spectrum(self, power):
         
-        h, w = log_magnitude.shape
+        h, w = power.shape
         center = (w // 2, h // 2)
         max_radius = min(center)
         
-        polar = cv2.linearPolar(log_magnitude, center, max_radius, cv2.WARP_FILL_OUTLIERS)
+        polar = cv2.linearPolar(power, center, max_radius, cv2.WARP_FILL_OUTLIERS)
         radial_profile = np.mean(polar, axis=0)
         angular_profile = np.mean(polar, axis=1)
         
         return polar, radial_profile, angular_profile
+    
     
     
     def _frequency_slope(self, radial_profile):

@@ -22,7 +22,8 @@ class TextureFeatureExtractor:
         hist_list = {}
 
         for P, R in test_pairs:
-            lbp = local_binary_pattern(gray_img, P=P, R=R, method='uniform')
+            gray_u8 = np.clip((gray_img * 255).round(), 0, 255).astype(np.uint8)
+            lbp = local_binary_pattern(gray_u8, P=P, R=R, method='uniform')
             n_bins = int(lbp.max() + 1)
 
             hist, _ = np.histogram(lbp.ravel(),
@@ -47,7 +48,7 @@ class TextureFeatureExtractor:
         angles = (0, np.pi / 4, np.pi / 2, 3 * np.pi / 4)
         props = ("contrast", "dissimilarity", "homogeneity", "energy", "correlation")
 
-        gray_q = np.floor(gray_img / (256 / levels)).astype(np.uint8)
+        gray_q = np.floor(gray_img * levels).astype(np.uint8)
         gray_q = np.clip(gray_q, 0, levels - 1)
 
         glcm = graycomatrix(gray_q,
@@ -73,9 +74,11 @@ class TextureFeatureExtractor:
 
      # https://scikit-image.org/docs/0.24.x/auto_examples/features_detection/plot_gabor.html
     def _gabor_stats(self, gray_img):
+        
         thetas = (0, np.pi / 4, np.pi / 2, 3 * np.pi / 4)
         frequencies = (0.1, 0.2, 0.3, 0.4)
         gabor_dict = {}
+        
         for freq in frequencies:
             for theta in thetas:
                 real, imag = gabor(gray_img, frequency=freq, theta=theta)
@@ -86,4 +89,5 @@ class TextureFeatureExtractor:
                 gabor_dict[f"{prefix}_std"] = safe_std(magnitude)
                 gabor_dict[f"{prefix}_var"] = safe_var(magnitude)
                 gabor_dict[f"{prefix}_energy"] = float(np.mean(magnitude ** 2))
+                
         return gabor_dict

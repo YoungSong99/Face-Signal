@@ -5,7 +5,6 @@ from src.utils.stats_utils import safe_mean, safe_std, safe_var, safe_entropy, s
 class EdgeFeatureExtractor:
 
     def _edge_stats(self, gray_img):
-        gray_img = gray_img.astype(np.uint8)
 
         sobel_x = cv2.Sobel(gray_img, cv2.CV_32F, 1, 0, ksize=3)
         sobel_y = cv2.Sobel(gray_img, cv2.CV_32F, 0, 1, ksize=3)
@@ -14,7 +13,16 @@ class EdgeFeatureExtractor:
         grad_angle = np.arctan2(sobel_y, sobel_x)
 
         lap = cv2.Laplacian(gray_img, cv2.CV_32F, ksize=3)
-        canny = cv2.Canny(gray_img, 100, 200)
+        
+        gray_u8 = np.clip((gray_img * 255).round(), 0, 255).astype(np.uint8)
+        
+        high = np.percentile(gray_u8, 90)
+        low = 0.5 * high
+        
+        canny = cv2.Canny(gray_u8, low, high)
+        
+        
+        
         edge_pixels = canny > 0
 
         feature_dict = {}

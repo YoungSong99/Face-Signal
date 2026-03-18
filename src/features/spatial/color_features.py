@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from src.utils.stats_utils import safe_mean, safe_std, safe_var, safe_entropy, safe_uniformity
+from src.utils.stats_utils import hist_entropy, safe_mean, safe_std, safe_var, safe_entropy, safe_uniformity
 
 class ColorFeatureExtractor:
     def _color_stats(self, image):
@@ -109,11 +109,8 @@ class ColorFeatureExtractor:
     def _color_entropy(self, hsv):
         saturation = hsv[:, :, 1]
 
-        hist = cv2.calcHist([saturation], [0], None, [256], [0, 256])
-        hist = hist / np.sum(hist)
-
-        entropy = -np.sum(hist * np.log2(hist + 1e-8))
-
+        entropy = hist_entropy(saturation, bins=256, value_range=(0, 1))
+        
         return {
             "color_entropy": float(entropy)
         }
