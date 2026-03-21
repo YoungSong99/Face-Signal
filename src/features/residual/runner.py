@@ -5,10 +5,10 @@ from tqdm import tqdm
 
 from src.features.residual.extractor import ResidualFeatureExtractor
 
-CSV_PATH = r"C:\Users\Young\projects_win\Face-Signal\data\metadata\sample_rgb.csv"
-OUTPUT_PATH = r"C:\Users\Young\projects_win\Face-Signal\outputs\rgb_residual_features.csv"
+CSV_PATH = ""
+OUTPUT_PATH = ""
 
-METHODS = ["blur", "jpeg", "vae", "sr", "rigid"]
+METHODS = ["blur", "jpeg", "vae", "sr"]
 
 ZONE_MAP_4x4 = np.array([
     [ 1,  2,  3,  4],
@@ -17,11 +17,15 @@ ZONE_MAP_4x4 = np.array([
     [13, 14, 15, 16],
 ], dtype=np.uint8)
 
+ZONE_MAP_8x8 = np.arange(1, 64 + 1, dtype=np.uint16).reshape(8, 8)
+ZONE_MAP_16x16 = np.arange(1, 256 + 1, dtype=np.uint16).reshape(16, 16)
+
 extractor = ResidualFeatureExtractor(
-    zone_map=ZONE_MAP_4x4,
+    zone_map=ZONE_MAP_8x8,
     use_zone_stats=True,
     use_rgb_channel_features=True,
     use_ycrcb_channel_features=False,
+    gray_source="rgb"
 )
 
 def load_residual(path):
@@ -35,15 +39,11 @@ def load_residual(path):
 
 df = pd.read_csv(CSV_PATH)
 
-# resume
-if Path(OUTPUT_PATH).exists():
-    done_df = pd.read_csv(OUTPUT_PATH, usecols=["image_path"])
-    done_set = set(done_df["image_path"].tolist())
-    df = df[~df["image_path"].isin(done_set)]
-    print(f"resume: {len(done_set)} skipped")
-
 rows = []
 SAVE_EVERY = 1000
+
+if Path(OUTPUT_PATH).exists():
+    Path(OUTPUT_PATH).unlink()
 
 for i, row in enumerate(tqdm(df.itertuples(index=False), total=len(df))):
     out = {
@@ -72,7 +72,7 @@ for i, row in enumerate(tqdm(df.itertuples(index=False), total=len(df))):
         try:
             feats = extractor.extract(
                 rgb_residual=residual,
-                ycrcb_residual=residual,  # 중요
+                ycrcb_residual=residual,
             )
             for k, v in feats.items():
                 out[f"{method}_{k}"] = v
@@ -84,17 +84,23 @@ for i, row in enumerate(tqdm(df.itertuples(index=False), total=len(df))):
 
     if (i + 1) % SAVE_EVERY == 0:
         chunk_df = pd.DataFrame(rows)
-        if Path(OUTPUT_PATH).exists():
-            chunk_df.to_csv(OUTPUT_PATH, mode="a", header=False, index=False)
-        else:
-            chunk_df.to_csv(OUTPUT_PATH, index=False)
+        write_header = not Path(OUTPUT_PATH).exists()
+        chunk_df.to_csv(
+            OUTPUT_PATH,
+            mode="a",
+            header=write_header,
+            index=False
+        )
         rows.clear()
 
 if rows:
     chunk_df = pd.DataFrame(rows)
-    if Path(OUTPUT_PATH).exists():
-        chunk_df.to_csv(OUTPUT_PATH, mode="a", header=False, index=False)
-    else:
-        chunk_df.to_csv(OUTPUT_PATH, index=False)
+    write_header = not Path(OUTPUT_PATH).exists()
+    chunk_df.to_csv(
+        OUTPUT_PATH,
+        mode="a",
+        header=write_header,
+        index=False
+    )
 
 print("saved:", OUTPUT_PATH)

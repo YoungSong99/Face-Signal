@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+from src.features.artifact.extractor import ArtifactFeatureExtractor
 from src.features.frequency.dwt_features import DWTFeatureExtractor
 from src.features.frequency.fft_features import FFTFeatureExtractor
 from src.features.frequency.dct_features import DCTFeatureExtractor
@@ -14,19 +15,25 @@ class ResidualZoneFeatures:
         use_global_stats: bool = True,
         use_global_frequency: bool = True,
         use_zone_stats: bool = True,
+        use_global_artifact: bool = True,
         fft_extractor: FFTFeatureExtractor | None = None,
         dct_extractor: DCTFeatureExtractor | None = None,
         dwt_extractor: DWTFeatureExtractor | None = None,
+        artifact_extractor: ArtifactFeatureExtractor | None = None,
+
     ):
         self.zone_map = zone_map.astype(np.uint8)
 
         self.use_global_stats = use_global_stats
         self.use_global_frequency = use_global_frequency
         self.use_zone_stats = use_zone_stats
-
+        self.use_global_artifact = use_global_artifact
+        
         self.fft_extractor = fft_extractor or FFTFeatureExtractor()
         self.dct_extractor = dct_extractor or DCTFeatureExtractor()
         self.dwt_extractor = dwt_extractor or DWTFeatureExtractor()
+        self.artifact_extractor = artifact_extractor or ArtifactFeatureExtractor()
+
 
     def extract(self, gray: np.ndarray) -> dict[str, float]:
         
@@ -40,6 +47,9 @@ class ResidualZoneFeatures:
 
         if self.use_zone_stats:
             features.update(self._zone_stats(gray))
+        
+        if self.use_global_artifact:
+            features.update(self._global_artifact(gray))
             
         return features
 
@@ -78,7 +88,17 @@ class ResidualZoneFeatures:
             features[f"global_{key}"] = value
 
         return features
+    
+    
+    def _global_artifact(self, gray):
+        features = {}
+        artifact_features = self.artifact_extractor.extract(gray)
 
+        for key, value in artifact_features.items():
+            features[f"global_{key}"] = value
+
+        return features
+    
 
     def _resize_zone_map(self, gray: np.ndarray) -> np.ndarray:
         h, w = gray.shape
