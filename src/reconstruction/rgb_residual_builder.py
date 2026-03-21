@@ -17,7 +17,6 @@ class RGBResidualBuilder:
         use_blur=True,
         use_vae=True,
         use_sr=True,
-        use_rigid=True,
         jpeg_quality=75,
         blur_sigma=2.0,
         vae_model_id="stabilityai/sd-vae-ft-ema",
@@ -28,7 +27,6 @@ class RGBResidualBuilder:
         self.use_blur = use_blur
         self.use_vae = use_vae
         self.use_sr = use_sr
-        self.use_rigid = use_rigid
 
         self.jpeg_quality = jpeg_quality
         self.blur_sigma = blur_sigma
@@ -74,15 +72,66 @@ class RGBResidualBuilder:
 
         return outputs
 
-    def _jpeg_residual(self, image_u8):
+    def extract_with_recons(self, image_rgb):
+        image_u8 = self._to_uint8_rgb(image_rgb)
+        outputs = {}
+
+        if self.use_jpeg:
+            recon = self._jpeg_recon(image_u8)
+            residual = np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
+            outputs["jpeg"] = {
+                "reconstruction": recon,
+                "residual": residual,
+            }
+
+        if self.use_blur:
+            recon = self._blur_recon(image_u8)
+            residual = np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
+            outputs["blur"] = {
+                "reconstruction": recon,
+                "residual": residual,
+            }
+
+        if self.use_vae:
+            recon = self._vae_recon(image_u8)
+            residual = np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
+            outputs["vae"] = {
+                "reconstruction": recon,
+                "residual": residual,
+                "lpips": self._vae_lpips(image_u8),
+            }
+
+        if self.use_sr:
+            recon = self._sr_upsample(image_u8)
+            residual = np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
+            outputs["sr"] = {
+                "reconstruction": recon,
+                "residual": residual,
+                "delta_re": self._sr_delta(image_u8),
+            }
+
+        if self.use_rigid:
+            recon = self._rigid_recon(image_u8)
+            residual = np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
+            outputs["rigid"] = {
+                "reconstruction": recon,
+                "residual": residual,
+            }
+
+        return outputs
+
+    def _jpeg_recon(self, image_u8):
         buf = io.BytesIO()
         Image.fromarray(image_u8).save(buf, format="JPEG", quality=self.jpeg_quality)
         buf.seek(0)
-        jpeg_np = np.array(Image.open(buf).convert("RGB"))
+        return np.array(Image.open(buf).convert("RGB"))
+
+    def _jpeg_residual(self, image_u8):
+        jpeg_np = self._jpeg_recon(image_u8)
         residual = np.abs(image_u8.astype(np.float32) - jpeg_np.astype(np.float32))
         return residual.astype(np.float32)
 
-    def _blur_residual(self, image_u8):
+    def _blur_recon(self, image_u8):
         image_f = image_u8.astype(np.float32)
         blurred = cv2.GaussianBlur(
             image_f,
@@ -90,21 +139,26 @@ class RGBResidualBuilder:
             sigmaX=self.blur_sigma,
             sigmaY=self.blur_sigma,
         )
-        return np.abs(image_f - blurred).astype(np.float32)
+        return np.clip(blurred, 0, 255).round().astype(np.uint8)
+
+    def _blur_residual(self, image_u8):
+        recon = self._blur_recon(image_u8)
+        return np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
 
     def _load_vae_models(self):
         self.vae = AutoencoderKL.from_pretrained(self.vae_model_id).eval().to(self.device)
         self.lpips_fn = lpips.LPIPS(net="vgg").eval().to(self.device)
 
-    def _vae_residual(self, image_u8):
+    def _vae_recon(self, image_u8):
         x = self._to_vae_tensor(image_u8)
         with torch.no_grad():
             z = self.vae.encode(x).latent_dist.sample()
             x_recon = self.vae.decode(z).sample
+        return self._tensor_to_uint8_rgb(x_recon)
 
-        orig_np = self._tensor_to_uint8_rgb(x)
-        recon_np = self._tensor_to_uint8_rgb(x_recon)
-        residual = np.abs(orig_np.astype(np.float32) - recon_np.astype(np.float32))
+    def _vae_residual(self, image_u8):
+        recon_np = self._vae_recon(image_u8)
+        residual = np.abs(image_u8.astype(np.float32) - recon_np.astype(np.float32))
         return residual.astype(np.float32)
 
     def _vae_lpips(self, image_u8):
@@ -149,9 +203,13 @@ class RGBResidualBuilder:
         re_after = self._vae_lpips(recon)
         return float(re_after - re_before)
 
-    def _rigid_residual(self, image_u8, sigma=2.0):
+    def _rigid_recon(self, image_u8, sigma=2.0):
         blurred = gaussian_filter(image_u8.astype(np.float32), sigma=[sigma, sigma, 0])
-        return np.abs(image_u8.astype(np.float32) - blurred).astype(np.float32)
+        return np.clip(blurred, 0, 255).round().astype(np.uint8)
+
+    def _rigid_residual(self, image_u8, sigma=2.0):
+        recon = self._rigid_recon(image_u8, sigma=sigma)
+        return np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
 
     def _to_uint8_rgb(self, image):
         img = np.asarray(image)
