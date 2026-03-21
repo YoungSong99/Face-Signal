@@ -1,4 +1,4 @@
-from .config import (
+from src.preprocessing.config import (
     DATA_DIR,
     FACE_DIR,
     SKIN_DIR,
@@ -6,7 +6,7 @@ from .config import (
     INPUT_CSV,
     RETINAFACE_CONFIDENCE_THRESHOLD,
 )
-from .pipeline import ControlledFaceDatasetBuilder
+from src.preprocessing.pipeline import ControlledFaceDatasetBuilder
 
 
 def main():
@@ -23,7 +23,3 @@ def main():
     )
 
     print("Done")
-
-
-if __name__ == "__main__":
-    main()

@@ -123,6 +123,8 @@ class FaceExtractor:
             "face_bbox": None,
             "skin_available": False,
             "used_region": "full",
+            "face_crop": None,
+            "skin_region": None,
         }
 
         if not use_face_only and not use_skin_only:
@@ -139,6 +141,8 @@ class FaceExtractor:
         if face_crop is None or face_crop.size == 0:
             return img_bgr, info
 
+        info["face_crop"] = face_crop
+        
         if use_skin_only:
             skin_mask = self.parse_skin_mask(face_crop)
             if skin_mask is None:
@@ -151,6 +155,7 @@ class FaceExtractor:
                 return face_crop, info
 
             info["skin_available"] = True
+            info["skin_region"] = skin_region
             info["used_region"] = "skin"
             return skin_region, info
 
