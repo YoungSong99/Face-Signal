@@ -49,3 +49,11 @@ def rgb_to_uint8(image):
         img = img * 255.0
     img = np.clip(img, 0, 255).round().astype(np.uint8)
     return img
+
+
+def to_uint8_vis(x):
+    x = np.asarray(x, dtype=np.float32)
+    x = x - x.min()
+    if x.max() > 0:
+        x = x / x.max()
+    return np.clip(x * 255.0, 0, 255).astype(np.uint8)
