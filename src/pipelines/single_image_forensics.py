@@ -8,6 +8,7 @@ from src.features.artifact.extractor import ArtifactFeatureExtractor
 from src.features.residual.extractor import ResidualFeatureExtractor
 from src.reconstruction.ycrcb_residual_builder import YCrCbResidualBuilder
 from src.preprocessing.face_extractor import FaceExtractor
+from src.utils.image_utils import to_uint8_vis
 
 
 class SingleImageForensicsPipeline:
@@ -57,6 +58,7 @@ class SingleImageForensicsPipeline:
             use_face_only=self.use_face_only,
             use_skin_only=self.use_skin_only,
         )
+        
 
     def _save_images(self, save_dir, image_stem, method, recon_rgb, residual_ycrcb):
         save_dir = Path(save_dir)
@@ -68,28 +70,65 @@ class SingleImageForensicsPipeline:
         cv2.imwrite(str(recon_path), cv2.cvtColor(recon_rgb, cv2.COLOR_RGB2BGR))
 
         residual_y = residual_ycrcb[:, :, 0]
-        residual_y_vis = self._to_uint8_vis(residual_y)
+        residual_y_vis = to_uint8_vis(residual_y)
         cv2.imwrite(str(residual_y_path), residual_y_vis)
 
-    def _to_uint8_vis(self, x):
-        x = np.asarray(x, dtype=np.float32)
-        x = x - x.min()
-        if x.max() > 0:
-            x = x / x.max()
-        return np.clip(x * 255.0, 0, 255).astype(np.uint8)
+
+    def _save_face_and_skin(self, save_dir, image_stem, face_info):
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        face_img = face_info.get("face_crop")
+        skin_img = face_info.get("skin_region")
+
+        if face_img is not None:
+            cv2.imwrite(
+                str(save_dir / f"{image_stem}_face.png"),
+                face_img,
+            )
+
+        if skin_img is not None:
+            cv2.imwrite(
+                str(save_dir / f"{image_stem}_skin.png"),
+                skin_img,
+            )
+
 
     def analyze_one_image(self, image_path, save_dir=None):
         image_path = Path(image_path)
-
+                    
         img_bgr = cv2.imread(str(image_path))
         if img_bgr is None:
             raise ValueError(f"Failed to read image: {image_path}")
 
         analysis_bgr, face_info = self._prepare_analysis_region(img_bgr)
 
-        analysis_rgb = cv2.cvtColor(analysis_bgr, cv2.COLOR_BGR2RGB)
-        analysis_gray = cv2.cvtColor(analysis_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
-        analysis_rgb_f = analysis_rgb.astype(np.float32) / 255.0
+        if save_dir is not None:
+            self._save_face_and_skin(
+                save_dir=save_dir,
+                image_stem=image_path.stem,
+                face_info=face_info,
+            )
+        
+        face_crop = face_info.get("face_crop")
+        skin_region = face_info.get("skin_region")
+        
+        if self.use_skin_only and skin_region is not None:
+            original_bgr = skin_region
+        elif self.use_face_only and face_crop is not None:
+            original_bgr = face_crop
+        else:
+            original_bgr = img_bgr
+
+        if face_crop is not None:
+            residual_input_bgr = face_crop
+        else:
+            residual_input_bgr = original_bgr
+        
+
+        original_rgb = cv2.cvtColor(original_bgr, cv2.COLOR_BGR2RGB)
+        original_gray = cv2.cvtColor(original_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
+        original_rgb_f = original_rgb.astype(np.float32) / 255.0
 
         result = {
             "image_path": str(image_path),
@@ -107,17 +146,18 @@ class SingleImageForensicsPipeline:
         orig_feats = {}
 
         if self.use_original_spatial:
-            orig_feats.update(self.spatial_extractor.extract(analysis_rgb_f, analysis_gray))
+            orig_feats.update(self.spatial_extractor.extract(original_rgb_f, original_gray))
 
         if self.use_original_frequency:
-            orig_feats.update(self.frequency_extractor.extract(analysis_gray))
+            orig_feats.update(self.frequency_extractor.extract(original_gray))
 
         if self.use_original_artifact:
-            orig_feats.update(self.artifact_extractor.extract(analysis_gray))
+            orig_feats.update(self.artifact_extractor.extract(original_gray))
 
         result["original_features"] = orig_feats
 
-        recon_dict = self.builder.extract_with_recons(analysis_rgb)
+        residual_input_rgb = cv2.cvtColor(residual_input_bgr, cv2.COLOR_BGR2RGB)
+        recon_dict = self.builder.extract_with_recons(residual_input_rgb)
 
         for method, pack in recon_dict.items():
             recon_rgb = pack["reconstruction_rgb"]
