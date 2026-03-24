@@ -22,7 +22,7 @@ class SingleImageForensicsPipeline:
         use_original_artifact: bool = True,
         use_residual_features: bool = True,
         use_face_only: bool = True,
-        use_skin_only: bool = False,
+        use_skin_only: bool = True,
         retinaface_confidence_threshold: float = 0.5,
     ):
         residual_builder_kwargs = residual_builder_kwargs or {}

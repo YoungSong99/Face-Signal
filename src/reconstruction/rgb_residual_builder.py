@@ -67,9 +67,6 @@ class RGBResidualBuilder:
             outputs["sr_residual"] = self._sr_residual(image_u8)
             outputs["sr_delta_re"] = self._sr_delta(image_u8)
 
-        if self.use_rigid:
-            outputs["rigid_residual"] = self._rigid_residual(image_u8)
-
         return outputs
 
     def extract_with_recons(self, image_rgb):
@@ -108,14 +105,6 @@ class RGBResidualBuilder:
                 "reconstruction": recon,
                 "residual": residual,
                 "delta_re": self._sr_delta(image_u8),
-            }
-
-        if self.use_rigid:
-            recon = self._rigid_recon(image_u8)
-            residual = np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
-            outputs["rigid"] = {
-                "reconstruction": recon,
-                "residual": residual,
             }
 
         return outputs
@@ -203,14 +192,7 @@ class RGBResidualBuilder:
         re_after = self._vae_lpips(recon)
         return float(re_after - re_before)
 
-    def _rigid_recon(self, image_u8, sigma=2.0):
-        blurred = gaussian_filter(image_u8.astype(np.float32), sigma=[sigma, sigma, 0])
-        return np.clip(blurred, 0, 255).round().astype(np.uint8)
-
-    def _rigid_residual(self, image_u8, sigma=2.0):
-        recon = self._rigid_recon(image_u8, sigma=sigma)
-        return np.abs(image_u8.astype(np.float32) - recon.astype(np.float32)).astype(np.float32)
-
+ 
     def _to_uint8_rgb(self, image):
         img = np.asarray(image)
         if img.ndim != 3 or img.shape[2] != 3:

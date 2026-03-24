@@ -17,12 +17,10 @@ class YCrCbResidualBuilder:
         use_blur=True,
         use_vae=True,
         use_sr=True,
-        use_rigid=True,
         jpeg_quality=75,
         blur_sigma=2.0,
-        rigid_sigma=2.0,
-        vae_model_id="stabilityai/sd-vae-ft-ema",
-        realesrgan_model_path="models\\RealESRGAN_x2plus.pth",
+        vae_model_id="stabilityai/sd-vae-ft-ema", # https://cs231n.stanford.edu/2025/papers/text_file_840591073-CS_231N_Project_Report.pdf
+        realesrgan_model_path="models\\RealESRGAN_x2plus.pth", #https://github.com/xinntao/Real-ESRGAN
         device="cpu",
         vae_size=(512, 512),
     ):
@@ -30,11 +28,9 @@ class YCrCbResidualBuilder:
         self.use_blur = use_blur
         self.use_vae = use_vae
         self.use_sr = use_sr
-        self.use_rigid = use_rigid
 
         self.jpeg_quality = jpeg_quality
         self.blur_sigma = blur_sigma
-        self.rigid_sigma = rigid_sigma
         self.vae_model_id = vae_model_id
         self.realesrgan_model_path = realesrgan_model_path
         self.device = device
@@ -75,9 +71,6 @@ class YCrCbResidualBuilder:
             outputs["sr_residual"] = self._sr_residual(image_u8)
             outputs["sr_delta_re"] = self._sr_delta(image_u8)
 
-        if self.use_rigid:
-            outputs["rigid_residual"] = self._rigid_residual(image_u8)
-
         return outputs
 
     def extract_with_recons(self, image_rgb):
@@ -116,14 +109,6 @@ class YCrCbResidualBuilder:
                 "reconstruction_ycrcb": self._rgb_to_ycrcb(recon),
                 "residual_ycrcb": self._compute_ycrcb_residual(image_u8, recon),
                 "delta_re": self._sr_delta(image_u8),
-            }
-
-        if self.use_rigid:
-            recon = self._rigid_recon(image_u8)
-            outputs["rigid"] = {
-                "reconstruction_rgb": recon,
-                "reconstruction_ycrcb": self._rgb_to_ycrcb(recon),
-                "residual_ycrcb": self._compute_ycrcb_residual(image_u8, recon),
             }
 
         return outputs
@@ -213,17 +198,6 @@ class YCrCbResidualBuilder:
         recon = self._sr_upsample(image_u8)
         re_after = self._vae_lpips(recon)
         return float(re_after - re_before)
-
-    def _rigid_recon(self, image_u8):
-        blurred = gaussian_filter(
-            image_u8.astype(np.float32),
-            sigma=[self.rigid_sigma, self.rigid_sigma, 0],
-        )
-        return np.clip(blurred, 0, 255).round().astype(np.uint8)
-
-    def _rigid_residual(self, image_u8):
-        recon = self._rigid_recon(image_u8)
-        return self._compute_ycrcb_residual(image_u8, recon)
 
     def _compute_ycrcb_residual(self, orig_rgb, recon_rgb):
         orig_ycrcb = self._rgb_to_ycrcb(orig_rgb)

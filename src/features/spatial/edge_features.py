@@ -20,9 +20,7 @@ class EdgeFeatureExtractor:
         low = 0.5 * high
         
         canny = cv2.Canny(gray_u8, low, high)
-        
-        
-        
+
         edge_pixels = canny > 0
 
         feature_dict = {}

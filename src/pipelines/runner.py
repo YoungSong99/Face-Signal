@@ -15,7 +15,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 pipeline = SingleImageForensicsPipeline(
     zone_map=ZONE_MAP_8x8,
     use_face_only=True,
-    use_skin_only=False,
+    use_skin_only=True,
     residual_builder_kwargs={
         "use_jpeg": True,
         "use_blur": True,
@@ -26,14 +26,14 @@ pipeline = SingleImageForensicsPipeline(
 )
 
 result = pipeline.analyze_one_image(
-    image_path=r"C:\Users\Young\projects_win\Face-Signal\jenny.jpg",
-    save_dir=r"C:\Users\Young\projects_win\Face-Signal\one_image_result",
+    image_path=r"C:\Users\Young\projects_win\Face-Signal\jennie.jpg",
+    save_dir=r"single_img_result",
 )
 
 flat_row = flatten_forensics_result(result)
 safe_row = make_json_safe(flat_row)
 
-with open("one_image_result/result.json", "w", encoding="utf-8") as f:
+with open("single_img_result/result.json", "w", encoding="utf-8") as f:
     json.dump(safe_row, f, indent=2, ensure_ascii=False)
     
     

@@ -5,6 +5,8 @@ from src.features.artifact.extractor import ArtifactFeatureExtractor
 from src.features.frequency.dwt_features import DWTFeatureExtractor
 from src.features.frequency.fft_features import FFTFeatureExtractor
 from src.features.frequency.dct_features import DCTFeatureExtractor
+from src.features.spatial.extractor import SpatialFeatureExtractor
+
 from src.utils.stats_utils import safe_kurtosis, safe_mean, safe_skewness, safe_std, safe_var
 
 
@@ -16,10 +18,12 @@ class ResidualZoneFeatures:
         use_global_frequency: bool = True,
         use_zone_stats: bool = True,
         use_global_artifact: bool = True,
+        use_global_spatial: bool = True,
         fft_extractor: FFTFeatureExtractor | None = None,
         dct_extractor: DCTFeatureExtractor | None = None,
         dwt_extractor: DWTFeatureExtractor | None = None,
         artifact_extractor: ArtifactFeatureExtractor | None = None,
+        spatial_extractor: SpatialFeatureExtractor | None = None,
 
     ):
         self.zone_map = zone_map.astype(np.uint8)
@@ -28,12 +32,14 @@ class ResidualZoneFeatures:
         self.use_global_frequency = use_global_frequency
         self.use_zone_stats = use_zone_stats
         self.use_global_artifact = use_global_artifact
+        self.use_global_spatial = use_global_spatial
+
         
         self.fft_extractor = fft_extractor or FFTFeatureExtractor()
         self.dct_extractor = dct_extractor or DCTFeatureExtractor()
         self.dwt_extractor = dwt_extractor or DWTFeatureExtractor()
         self.artifact_extractor = artifact_extractor or ArtifactFeatureExtractor()
-
+        self.spatial_extractor = spatial_extractor or SpatialFeatureExtractor(use_color=False, use_texture=True, use_edge=True)
 
     def extract(self, gray: np.ndarray) -> dict[str, float]:
         
@@ -51,6 +57,9 @@ class ResidualZoneFeatures:
         if self.use_global_artifact:
             features.update(self._global_artifact(gray))
             
+        if self.use_global_spatial:
+            features.update(self._global_spatial(gray))
+
         return features
 
    
@@ -95,6 +104,17 @@ class ResidualZoneFeatures:
         artifact_features = self.artifact_extractor.extract(gray)
 
         for key, value in artifact_features.items():
+            features[f"global_{key}"] = value
+
+        return features
+    
+    
+    def _global_spatial(self, gray):
+        features = {}
+
+        spatial_features = self.spatial_extractor.extract(gray=gray)
+
+        for key, value in spatial_features.items():
             features[f"global_{key}"] = value
 
         return features

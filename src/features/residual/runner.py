@@ -5,8 +5,8 @@ from tqdm import tqdm
 
 from src.features.residual.extractor import ResidualFeatureExtractor
 
-CSV_PATH = ""
-OUTPUT_PATH = ""
+CSV_PATH = r"C:\Users\Young\projects_win\Face-Signal\data\sample.csv"
+OUTPUT_PATH = r"C:\Users\Young\projects_win\Face-Signal\data\residual_features.csv"
 
 METHODS = ["blur", "jpeg", "vae", "sr"]
 
@@ -21,11 +21,11 @@ ZONE_MAP_8x8 = np.arange(1, 64 + 1, dtype=np.uint16).reshape(8, 8)
 ZONE_MAP_16x16 = np.arange(1, 256 + 1, dtype=np.uint16).reshape(16, 16)
 
 extractor = ResidualFeatureExtractor(
-    zone_map=ZONE_MAP_8x8,
-    use_zone_stats=True,
+    zone_map=ZONE_MAP_4x4,
+    use_zone_stats=False,
     use_rgb_channel_features=True,
     use_ycrcb_channel_features=False,
-    gray_source="rgb"
+    gray_source="ycrcb",
 )
 
 def load_residual(path):
